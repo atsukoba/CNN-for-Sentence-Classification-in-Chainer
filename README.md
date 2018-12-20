@@ -14,10 +14,31 @@ Implementation of Yoon Kim's [Convolutional Neural Networks for Sentence Classif
 - chainer
 - gensim.models Word2vec
 
+## Text Data for Classification
+
+```
+data/
+|_train/
+| |_pos/
+| | |_01.txt
+| | :
+| |_neg/
+|   |_02.txt
+|   :
+|
+|_test/
+  |_pos/
+  | |_01.txt
+  | :
+  |_neg/
+    |_02.txt
+    :
+```
+
 ## Demo, Usage
 
 ```python
+import hoge
 
-demo()
-
+hoge()
 ```
