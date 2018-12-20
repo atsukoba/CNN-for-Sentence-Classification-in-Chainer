@@ -69,6 +69,7 @@ class CNN_static(Chain):
             return self.fc5(h)
         return F.softmax(self.fc5(h))
 
+
 class CNN_non_static(Chain):
     """
     Chain of CNN for Sentence classification model.
@@ -98,6 +99,7 @@ class CNN_non_static(Chain):
             return self.fc5(h)
         return F.softmax(self.fc5(h))
 
+
 class CNN_multi_ch(Chain):
     """
     Chain of CNN for Sentence classification model.
@@ -126,3 +128,16 @@ class CNN_multi_ch(Chain):
         if chainer.config.train:
             return self.fc5(h)
         return F.softmax(self.fc5(h))
+
+
+class Word2Vec(Chain):
+    """
+    """
+    def __init__(self):
+        super(CNNSC, self).__init__()
+        with self.init_scope():
+            pass
+        return
+
+    def forward(self):
+        return
