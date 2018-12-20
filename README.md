@@ -14,6 +14,7 @@ Implementation of Yoon Kim's [Convolutional Neural Networks for Sentence Classif
 - chainer
 - gensim.models Word2vec
 
+
 ## Text Data for Classification
 
 ```
