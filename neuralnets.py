@@ -11,12 +11,12 @@ import chainer.links as L
 from chainer.training import extensions
 
 
-class CNN_for_SC(Chain):
+class CNNSC(Chain):
     def __init__(self):
-        super(LeNet5, self).__init__()
+        super(CNNSC, self).__init__()
         with self.init_scope():
             # Convolutions
-            self.conv1 = L.Convolution2D(
+        self.embed = L.(
                 in_channels=1, out_channels=6, ksize=5, stride=1)
             self.conv2 = L.Convolution2D(
                 in_channels=6, out_channels=16, ksize=5, stride=1)
