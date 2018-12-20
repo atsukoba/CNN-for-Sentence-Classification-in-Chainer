@@ -17,23 +17,19 @@ Implementation of Yoon Kim's [Convolutional Neural Networks for Sentence Classif
 
 ## Text Data for Classification
 
+datasets from [cornell dataset](http://www.cs.cornell.edu/people/pabo/movie-review-data/)
+
 ```
+# data location
 data/
-    |_train/
-    |    |_pos/
-    |    |    |_01.txt
-    |    |      :
-    |    |_neg/
-    |         |_02.txt
-    |           :
-    |
-    |_test/
-        |_pos/
-        |    |_01.txt
-        |      :
-        |_neg/
-             |_02.txt
-               :
+    |_pos/
+    |    |_cv000_01.txt
+    |    |_cv000_02.txt
+    |      :
+    |_neg/
+        |_cv000_01.txt
+        |_cv000_02.txt
+           :
 ```
 
 ## Demo, Usage
