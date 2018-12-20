@@ -1,5 +1,7 @@
 # embedding model binary data file
 *.model
+*.DS_Store
+ipynb_checkpoints/
 
 ## auto-gened files below
 
