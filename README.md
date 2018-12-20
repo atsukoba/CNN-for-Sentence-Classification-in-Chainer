@@ -7,6 +7,9 @@ Implementation of Yoon Kim's [Convolutional Neural Networks for Sentence Classif
 
 ![](./src/structure.png)
 
+- [Yoon Kim's TensorFlow implementation repo](https://github.com/yoonkim/CNN_sentence)
+- [Google Prerained Word2Vec model](https://code.google.com/archive/p/word2vec/)
+- [skipgram Word2Vec on Chainer example](https://github.com/chainer/chainer/tree/master/examples/word2vec)
 ## Requirements
 
 - numpy
