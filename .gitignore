@@ -1,5 +1,7 @@
 # embedding model binary data file
+
 *.model
+data/
 *.DS_Store
 ipynb_checkpoints/
 
