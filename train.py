@@ -1,8 +1,6 @@
 import argparse
 import collections
-
 import numpy as np
-import six
 
 import chainer
 from chainer.backends import cuda
@@ -14,6 +12,7 @@ from chainer import reporter
 from chainer import training
 from chainer.training import extensions
 
+from gensim.models import Word2vec
 
 def trian_cnn(model_type="non-static"):
     return
