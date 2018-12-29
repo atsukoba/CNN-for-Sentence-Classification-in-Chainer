@@ -10,6 +10,7 @@ import chainer.functions as F
 import chainer.links as L
 from chainer.training import extensions
 
+
 class CNN_rand(Chain):
     """
     Chain of CNN for Sentence classification model.
