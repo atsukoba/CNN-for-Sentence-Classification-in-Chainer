@@ -5,17 +5,17 @@ Implementation of Yoon Kim's [Convolutional Neural Networks for Sentence Classif
 > Abstract (from Cornell university library)
 >We report on a series of experiments with convolutional neural networks (CNN) trained on top of pre-trained word vectors for sentence-level classification tasks. We show that a simple CNN with little hyperparameter tuning and static vectors achieves excellent results on multiple benchmarks. Learning task-specific vectors through fine-tuning offers further gains in performance. We additionally propose a simple modification to the architecture to allow for the use of both task-specific and static vectors. The CNN models discussed herein improve upon the state of the art on 4 out of 7 tasks, which include sentiment analysis and question classification.
 
-![](./src/structure.png)
+![](./img/structure.png)
 
 - [Yoon Kim's TensorFlow implementation repo](https://github.com/yoonkim/CNN_sentence)
 - [Google Prerained Word2Vec model](https://code.google.com/archive/p/word2vec/)
 - [skipgram Word2Vec on Chainer example](https://github.com/chainer/chainer/tree/master/examples/word2vec)
 ## Requirements
 
-- numpy
-- pandas
-- chainer
-- gensim.models Word2vec
+- [numpy](http://www.numpy.org/)
+- [pandas](https://pandas.pydata.org/)
+- [chainer](https://chainer.org/)
+- [gensim.models Word2vec](https://radimrehurek.com/gensim/)
 
 
 ## Text Data for Classification
@@ -35,7 +35,7 @@ data/
            :
 ```
 
-fetch data.
+or get data like this.
 
 ```bash
 $ cd data
@@ -46,7 +46,15 @@ $ tar -xf imdb.tar.gz
 ## Demo, Usage
 
 ```python
-import hoge
+import cnn_sentence
 
-hoge()
+cnn_sentence.train("cnn-non-static")
+```
+
+when use other data
+
+```python
+import cnn_sentence, data_builder
+
+data_set = data_builder.Data()
 ```

@@ -159,10 +159,10 @@ class Data:
               downsampling=1e-3, context=10, min_word_count=1) -> None:
         """
         Embedding by gensim.Word2Vec skip-gram model and extract weight vector.
-        
+
         Parameters
         ----------
-        
+
         """
         print("Now Training Word2vec model")
         model = word2vec.Word2Vec(self.sentences, workers=num_workers,
@@ -187,5 +187,3 @@ class Data:
         self.y_train, self.y_test = np.split(self.labels,
                                              [int(self.labels.size * ratio)])
         return
-
-                                                                                
