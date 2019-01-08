@@ -27,7 +27,7 @@ class CNN_rand(Chain):
     Chain of CNN for Sentence classification model.
     """
     def __init__(self, conv_filter_windows: list,
-                 n_vocab: int,
+                 embed_weights=None, n_vocab: int,
                  embed_dim=50, hidden_dim=50,
                  n_labels=2):
         self.embed_dim = embed_dim
@@ -45,7 +45,7 @@ class CNN_rand(Chain):
                                                  embed_dim)))
             # full connection
             self.fc4 = L.Linear(None, hidden_dim)
-            self.fc5 = L.Linear(hidden_dim, 2)
+            self.fc5 = L.Linear(hidden_dim, n_labels)
 
     def __call__(self, x):
         x = self.embed(x)
@@ -82,7 +82,7 @@ class CNN_static(Chain):
                                                  embed_dim)))
             # full connection
             self.fc4 = L.Linear(None, hidden_dim)
-            self.fc5 = L.Linear(hidden_dim, 2)
+            self.fc5 = L.Linear(hidden_dim, n_labels)
 
     def __call__(self, x):
         x = F.embed_id(x, initialW=self.embed_weights)
@@ -121,7 +121,7 @@ class CNN_non_static(Chain):
                                                  embed_dim)))
             # full connection
             self.fc4 = L.Linear(None, hidden_dim)
-            self.fc5 = L.Linear(hidden_dim, 2)
+            self.fc5 = L.Linear(hidden_dim, n_labels)
 
     def __call__(self, x):
         x = self.embed(x)
@@ -160,7 +160,7 @@ class CNN_multi_ch(Chain):
                                                  embed_dim)))
             # full connection
             self.fc4 = L.Linear(None, hidden_dim)
-            self.fc5 = L.Linear(hidden_dim, 2)
+            self.fc5 = L.Linear(hidden_dim, n_labels)
 
     def __call__(self, x):
         x1 = F.embed_id(x, initialW=self.embed_weights)
@@ -263,6 +263,13 @@ class WindowIterator(chainer.dataset.Iterator):
         if self._order is not None:
             serializer('_order', self._order)
 
-    
+
+# call these classes like `model = models.cnn["MODEL_NAME"](PARAMS)`
+cnn = {"CNN_rand" : CNN_rand,
+       "CNN_static" : CNN_static,
+       "CNN_non_static" : CNN_non_static,
+       "CNN_multi_ch" : CNN_multi_ch}
+
+
 if __name__ == "__main__":
     pass
