@@ -172,6 +172,8 @@ class Data:
         """
         Build train-test-splited X and y(label) data.
         Call this after executing self.load()
+        
+        data x dim : (n_sample, n_channel, words)
         """
         d = [[self.word2index[w] for w in s] for s in self.sentences]
         split = int(len(d) * ratio)
@@ -179,8 +181,8 @@ class Data:
         np.random.shuffle(d)
         np.random.seed(seed)
         np.random.shuffle(self.labels)
-        self.x_train, self.x_test = (np.array(d[:split]),
-                                     np.array(d[split:]))
+        self.x_train, self.x_test = (np.array(d[:split])[:, np.newaxis, :],
+                                     np.array(d[split:])[:, np.newaxis, :])
         self.y_train, self.y_test = (np.array(self.labels[:split]),
                                      np.array(self.labels[split:]))
 
