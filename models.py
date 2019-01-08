@@ -30,6 +30,7 @@ class CNN_rand(Chain):
                  n_vocab: int,
                  embed_dim=50, hidden_dim=50,
                  n_labels=2):
+        self.embed_dim = embed_dim
         w = np.random.rand(n_vocab, embed_dim)
         super(CNN_rand, self).__init__()
         with self.init_scope():
@@ -38,9 +39,10 @@ class CNN_rand(Chain):
                                    initialW=w)
             # Convolutions
             self.convs = list()
-            for w in conv_filter_windows:
+            for window in conv_filter_windows:
                 self.convs.append(
-                    L.Convolution1D(1, 1, ksize=w))
+                    L.Convolution2D(1, 1, ksize=(window,
+                                                 embed_dim)))
             # full connection
             self.fc4 = L.Linear(None, hidden_dim)
             self.fc5 = L.Linear(hidden_dim, 2)
@@ -50,10 +52,10 @@ class CNN_rand(Chain):
         conved = []
         for conv in self.convs:
             h = F.relu(conv(x))
-            h = F.max_pooling_1d(h, 2)
-            h = F.flatten(h)
+            h = F.max_pooling_2d(h, (2, self.embed_dim))
             conved.append(h)
-        x = F.concat(conved)
+        # concatenate along conved dimention (axis=2)
+        x = F.concat(conved, axis=2)
         x = F.relu(self.fc4(x))
         if chainer.config.train:
             return self.fc5(x)
@@ -64,89 +66,118 @@ class CNN_static(Chain):
     """
     Chain of CNN for Sentence classification model.
     """
-    def __init__(self, weights: list):
+    def __init__(self, conv_filter_windows: list,
+                 embed_weights: list, n_vocab: int,
+                 embed_dim=50, hidden_dim=50,
+                 n_labels=2):
+        self.embed_weights = embed_weights
+        self.embed_dim = embed_dim
         super(CNN_static, self).__init__()
         with self.init_scope():
-            self.initial_embed = weights
             # Convolutions
-            self.conv2 = L.Convolution2D(
-                in_channels=6, out_channels=16, ksize=5, stride=1)
-            self.conv3 = L.Convolution2D(
-                in_channels=16, out_channels=120, ksize=4, stride=1)
+            self.convs = list()
+            for window in conv_filter_windows:
+                self.convs.append(
+                    L.Convolution2D(1, 1, ksize=(window,
+                                                 embed_dim)))
             # full connection
-            self.fc4 = L.Linear(None, 84)
-            self.fc5 = L.Linear(84, 10)
+            self.fc4 = L.Linear(None, hidden_dim)
+            self.fc5 = L.Linear(hidden_dim, 2)
 
     def __call__(self, x):
-        h = F.embed_id(x)
-        h = F.sigmoid(self.conv1(h))
-        h = F.max_pooling_2d(h, 2, 2)
-        h = F.sigmoid(self.conv2(h))
-        h = F.max_pooling_2d(h, 2, 2)
-        h = F.sigmoid(self.conv3(h))
-        h = F.sigmoid(self.fc4(h))
+        x = F.embed_id(x, initialW=self.embed_weights)
+        conved = []
+        for conv in self.convs:
+            h = F.relu(conv(x))
+            h = F.max_pooling_2d(h, (2, self.embed_dim))
+            conved.append(h)
+        # concatenate along conved dimention (axis=2)
+        x = F.concat(conved, axis=2)
+        x = F.relu(self.fc4(x))
         if chainer.config.train:
-            return self.fc5(h)
-        return F.softmax(self.fc5(h))
+            return self.fc5(x)
+        return F.softmax(self.fc5(x))
 
 
 class CNN_non_static(Chain):
     """
     Chain of CNN for Sentence classification model.
     """
-    def __init__(self, embedding_weight: list):
+    def __init__(self, conv_filter_windows: list,
+                 embed_weights: list, n_vocab: int,
+                 embed_dim=50, hidden_dim=50,
+                 n_labels=2):
+        self.embed_dim = embed_dim
         super(CNN_non_static, self).__init__()
         with self.init_scope():
+            # Embedding
+            self.embed = L.EmbedID(n_vocab, embed_dim,
+                                   initialW=embed_weights)
             # Convolutions
-            self.embed = L.EmbedID(in_channels=1, out_channels=6, ksize=5, stride=1)
-            self.conv2 = L.Convolution2D(
-                in_channels=6, out_channels=16, ksize=5, stride=1)
-            self.conv3 = L.Convolution2D(
-                in_channels=16, out_channels=120, ksize=4, stride=1)
+            self.convs = list()
+            for window in conv_filter_windows:
+                self.convs.append(
+                    L.Convolution2D(1, 1, ksize=(window,
+                                                 embed_dim)))
             # full connection
-            self.fc4 = L.Linear(None, 84)
-            self.fc5 = L.Linear(84, 10)
+            self.fc4 = L.Linear(None, hidden_dim)
+            self.fc5 = L.Linear(hidden_dim, 2)
 
     def __call__(self, x):
-        h = F.relu(self.conv1(x))
-        h = F.max_pooling_2d(h, 2, 2)
-        h = F.relu(self.conv2(h))
-        h = F.max_pooling_2d(h, 2, 2)
-        h = F.relu(self.conv3(h))
-        h = F.relu(self.fc4(h))
+        x = self.embed(x)
+        conved = []
+        for conv in self.convs:
+            h = F.relu(conv(x))
+            h = F.max_pooling_2d(h, (2, self.embed_dim))
+            conved.append(h)
+        # concatenate along conved dimention (axis=2)
+        x = F.concat(conved, axis=2)
+        x = F.relu(self.fc4(x))
         if chainer.config.train:
-            return self.fc5(h)
-        return F.softmax(self.fc5(h))
+            return self.fc5(x)
+        return F.softmax(self.fc5(x))
 
 
 class CNN_multi_ch(Chain):
     """
     Chain of CNN for Sentence classification model.
     """
-    def __init__(self):
+    def __init__(self, conv_filter_windows: list,
+                 embed_weights: list, n_vocab: int,
+                 embed_dim=50, hidden_dim=50,
+                 n_labels=2):
+        self.embed_dim = embed_dim
         super(CNN_multi_ch, self).__init__()
         with self.init_scope():
+            # Embedding
+            self.embed = L.EmbedID(n_vocab, embed_dim,
+                                   initialW=embed_weights)
             # Convolutions
-            self.embed = L.EmbedID()
-            self.conv2 = L.Convolution1D()
-            self.conv3 = L.Convolution1D()
+            self.convs = list()
+            for window in conv_filter_windows:
+                self.convs.append(
+                    L.Convolution2D(2, 2, ksize=(window,
+                                                 embed_dim)))
             # full connection
-            self.fc4 = L.Linear(None, 84)
-            self.fc5 = L.Linear(84, 10)
+            self.fc4 = L.Linear(None, hidden_dim)
+            self.fc5 = L.Linear(hidden_dim, 2)
 
     def __call__(self, x):
-        h_ch1 = F.sigmoid(F.embed_id(x))
-        h_ch2 = F.sigmoid(self.embed(x))
-        
-        h = F.relu(self.conv1(h_ch1, h_ch2))
-        h = F.max_pooling_2d(h, 2, 2)
-        h = F.relu(self.conv2(h))
-        h = F.max_pooling_2d(h, 2, 2)
-        h = F.relu(self.conv3(h))
-        h = F.relu(self.fc4(h))
+        x1 = F.embed_id(x, initialW=self.embed_weights)
+        x2 = self.embed(x)
+        # concatenate along channel dimention (axis=1)
+        x = F.concat([x1, x2], axis=1)
+        conved = []
+        for conv in self.convs:
+            h = F.relu(conv(x))
+            h = F.max_pooling_2d(h, (2, self.embed_dim))
+            conved.append(h)
+        # concatenate along conved dimention (axis=2)
+        x = F.concat(conved, axis=2)
+        x = F.relu(self.fc4(x))
         if chainer.config.train:
-            return self.fc5(h)
-        return F.softmax(self.fc5(h))
+            return self.fc5(x)
+        return F.softmax(self.fc5(x))
 
 
 class SkipGram(Chain):
