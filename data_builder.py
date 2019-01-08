@@ -1,3 +1,4 @@
+import re
 import collections
 import numpy as np
 import pandas as pd
@@ -5,13 +6,17 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 from glob import glob
 from chainer.datasets import TupleDataset
-from gensim.models import word2vec
+from gensim.models import Word2Vec
+
 
 def load_imdb_data() -> object:
+    """
+    load sample text data and build vocalbs. datasets, embedding-weights.
+    """
     pos_pathes = glob("data/pos/*.txt")
     neg_pathes = glob("data/neg/*.txt")
     pathes = pos_pathes + neg_pathes
-    labels = [[1] * len(pos_pathes), [0] * len(neg_pathes)]
+    labels = [1] * len(pos_pathes) + [0] * len(neg_pathes)
     return Data("imdb", pathes, labels).load()
 
 
@@ -39,7 +44,7 @@ class Data:
         self.dataname = dataname
         self.txt_path_list = txt_path_list
         assert len(labels) != 0, "no data in labels"
-        self.label_list = labels
+        self.labels = np.array(labels)
         self.padding_word = padding_word
         return
 
@@ -53,14 +58,13 @@ class Data:
         """
         self.load_text()
         self.padding_words()
-        self.embed()
         self.build_data()
         return self
 
     def get_info(self) -> str:
         output = "Data Info {}\n".format(self.dataname)
         output += "-" * 30 + "\n"
-        output += "Vocab: {}\n".format(len(self.index2word))
+        output += "Vocab: {}\n".format(self.n_vocab)
         output += "Sentences: {}\n".format(len(self.sentences))
         output += "-" * 30 + "\n"
         output += "x_train: {}\n".format(self.x_train.shape)
@@ -69,8 +73,13 @@ class Data:
         output += "y_test: {}\n".format(self.y_test.shape)
         return output
 
-    def get_chainer_dataset(self):
-        return
+    def get_chainer_dataset(self) -> "chainer.datasets.Tupledataset":
+        """
+        get train/test splited chainer.datasets.Tupledataset data
+        call this after exec self.build_data()
+        """
+        return (TupleDataset(self.x_train, self.y_train),
+                TupleDataset(self.x_test, self.y_test))
 
     def load_text(self, path_list=None) -> None:
         """
@@ -85,12 +94,15 @@ class Data:
 
         index2word = {}
         word2index = {}
+        word2index[self.padding_word] = 0
+        index2word[0] = self.padding_word
         counts = collections.Counter()
         sentences = []
-        for file in tqdm(path_list, desc="Load Files.."):
+        for file in tqdm(path_list, desc="Read Files.."):
             sentence = []
             with open(file) as f:
                 for line in f:
+                    line = self.clean_str(line)
                     for word in line.split():
                         if word not in word2index:
                             ind = len(word2index)
@@ -103,9 +115,10 @@ class Data:
         self.word2index = word2index
         self.sentences = sentences
         self.counts = counts
+        self.n_vocab = len(word2index)
         return
 
-    def padding_words(self, padding_word="<PAD/>") -> None:
+    def padding_words(self) -> None:
         """
         Pads all sentences to the same length. The length is defined by
         the longest sentence. Returns padded sentences, in order to align
@@ -131,59 +144,75 @@ class Data:
         padded_sentences = []
         for sentence in tqdm(self.sentences, desc="Padding"):
             num_padding = sequence_length - len(sentence)
-            new_sentence = sentence + [padding_word] * num_padding
+            new_sentence = sentence + [self.padding_word] * num_padding
             padded_sentences.append(new_sentence)
         self.sentences = np.array(padded_sentences)
         return
 
-    def clean_str(string: str) -> str:
+    def clean_str(self, string: str) -> str:
         """
-        Remove some simbols.
+        Remove some simbols and extend abbreviated expressions.
         """
         string = re.sub(r"[^A-Za-z0-9(),!?\'\`]", " ", string)
-        string = re.sub(r"\'s", " \'s", string)
-        string = re.sub(r"\'ve", " \'ve", string)
-        string = re.sub(r"n\'t", " n\'t", string)
-        string = re.sub(r"\'re", " \'re", string)
-        string = re.sub(r"\'d", " \'d", string)
-        string = re.sub(r"\'ll", " \'ll", string)
-        string = re.sub(r",", " , ", string)
-        string = re.sub(r"!", " ! ", string)
-        string = re.sub(r"\(", " \( ", string)
-        string = re.sub(r"\)", " \) ", string)
-        string = re.sub(r"\?", " \? ", string)
+        string = re.sub(r"\'s", " is ", string)
+        string = re.sub(r"\'ve", " have ", string)
+        string = re.sub(r"n\'t", " not ", string)
+        string = re.sub(r"\'re", " are ", string)
+        string = re.sub(r"\'d", " would ", string)
+        string = re.sub(r"\'ll", " will ", string)
+        string = re.sub(r",", " ", string)
+        string = re.sub(r"!", " ", string)
+        string = re.sub(r"\(", " ", string)
+        string = re.sub(r"\)", " ", string)
+        string = re.sub(r"\?", " ", string)
         string = re.sub(r"\s{2,}", " ", string)
         return string.strip().lower()
 
+    def build_data(self, ratio=0.5, seed=0) -> None:
+        """
+        Build train-test-splited X and y(label) data.
+        Call this after executing self.load()
+        """
+        d = [[self.word2index[w] for w in s] for s in self.sentences]
+        split = int(len(d) * ratio)
+        np.random.seed(seed)
+        np.random.shuffle(d)
+        np.random.seed(seed)
+        np.random.shuffle(self.labels)
+        self.x_train, self.x_test = (np.array(d[:split]),
+                                     np.array(d[split:]))
+        self.y_train, self.y_test = (np.array(self.labels[:split]),
+                                     np.array(self.labels[split:]))
+
+        return
+    
     def embed(self, num_workers=2, vectorize_dim=50,
-              downsampling=1e-3, context=10, min_word_count=1) -> None:
+              downsampling=1e-3, context=10, min_word_count=1) -> "numpy.ndarray":
         """
         Embedding by gensim.Word2Vec skip-gram model and extract weight vector.
 
         Parameters
         ----------
-
+        num_workers: int
+        vectorize_dim: int
+        downsampling: float
+        context: int
+        min_word_count: int
         """
-        print("Now Training Word2vec model")
-        model = word2vec.Word2Vec(self.sentences, workers=num_workers,
-                                  size=vectorize_dim,
-                                  min_count=min_word_count,
-                                  window=context, sample=downsampling)
-
-        self.embedding_weights = {key: model[word] if word in model
-                                  else np.random.uniform(-0.25, 0.25,
-                                                         model.vector_size)
-                                  for key, word in self.word2index.items()}
+        print("Training Word2vec model...")
+        s = [[self.word2index[w] for w in s] for s in self.sentences]
+        self.embed_model = Word2Vec(s, workers=num_workers,
+                                    size=vectorize_dim,
+                                    min_count=min_word_count,
+                                    window=context, sample=downsampling)
+        self.embed_model.init_sims(replace=True)
+        self.embed_weights = {key: self.embed_model[word] if word in self.embed_model
+            else np.random.uniform(-0.25, 0.25, self.embed_model.vector_size)
+            for key, word in self.word2index.items()}
+                                                                                
         print("got embedding weights!")
-        return
+        return self.embed_weights
 
-    def build_data(self, ratio=0.5, seed=0):
-        d = [[self.word2index[w] for w in s] for s in self.sentences]
-        np.random.seed(seed)
-        np.random.shuffle(d)
-        np.random.seed(seed)
-        np.random.shuffle(self.labels)
-        self.x_train, self.x_test = np.split(d, [int(d.size * ratio)])
-        self.y_train, self.y_test = np.split(self.labels,
-                                             [int(self.labels.size * ratio)])
-        return
+
+if __name__ == "__main__":
+    pass
