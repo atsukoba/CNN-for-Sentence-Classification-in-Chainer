@@ -1,15 +1,10 @@
 import numpy as np
 import chainer
-from chainer import backend
-from chainer import backends
 from chainer.backends import cuda
-from chainer import Function, gradient_check, report, training, utils, Variable
-from chainer import datasets, iterators, optimizers, serializers
-from chainer import Link, Chain, ChainList
+from chainer import Chain
 import chainer.functions as F
 import chainer.links as L
 import chainer.initializers as I
-from chainer.training import extensions
 
 """
 (on the paper)
@@ -27,7 +22,7 @@ class CNN_rand(Chain):
     Chain of CNN for Sentence classification model.
     """
     def __init__(self, conv_filter_windows: list,
-                 embed_weights=None, n_vocab: int,
+                 n_vocab: int, embed_weights=None,
                  embed_dim=50, hidden_dim=50,
                  n_labels=2):
         self.embed_dim = embed_dim
@@ -112,7 +107,8 @@ class CNN_non_static(Chain):
         with self.init_scope():
             # Embedding
             self.embed = L.EmbedID(n_vocab, embed_dim,
-                                   initialW=embed_weights)
+                                   initialW=embed_weights,
+                                   ignore_label=-1)
             # Convolutions
             self.convs = list()
             for window in conv_filter_windows:
@@ -198,7 +194,6 @@ class SkipGram(Chain):
         e = F.reshape(e, (batch_size * n_context, n_units))
         x = F.reshape(x, (batch_size * n_context,))
         loss = self.loss_func(e, x)
-        reporter.report({'loss': loss}, self)
         return loss
 
 
@@ -265,10 +260,10 @@ class WindowIterator(chainer.dataset.Iterator):
 
 
 # call these classes like `model = models.cnn["MODEL_NAME"](PARAMS)`
-cnn = {"CNN_rand" : CNN_rand,
-       "CNN_static" : CNN_static,
-       "CNN_non_static" : CNN_non_static,
-       "CNN_multi_ch" : CNN_multi_ch}
+cnn = {"CNN_rand": CNN_rand,
+       "CNN_static": CNN_static,
+       "CNN_non_static": CNN_non_static,
+       "CNN_multi_ch": CNN_multi_ch}
 
 
 if __name__ == "__main__":
