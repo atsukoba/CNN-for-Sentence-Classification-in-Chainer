@@ -20,23 +20,18 @@ import data_builder
 sentence classification by CNN on Chainer v.5
 """
 
-def sample_train(model_type="CNN-rand") -> None:
+def sample_train(data, model_type="CNN-rand") -> object:
 
-    # load imdb data
-    data = data_builder.load_imdb_data()
     print(data.get_info())
-
-    # embedding
-    data.embed()
-
     # build cnn model
     model = L.Classifier(models.cnn[model_type](
-        embedding_weight=data.embedding_weights))
+        embed_weights=data.embed_weights,
+        conv_filter_windows=[3, 8], n_vocab=data.n_vocab))
 
     train, test = data.get_chainer_dataset()
-    train_iter = chainer.iterators.SerialIterator(train, 64)
-    test_iter = chainer.iterators.SerialIterator(test, 64, repeat=False, shuffle=False)
-    optimizer = chainer.optimizers.Adam().setup(model)
+    train_iter = iterators.SerialIterator(train, 64)
+    test_iter = iterators.SerialIterator(test, 64, repeat=False, shuffle=False)
+    optimizer = O.Adam().setup(model)
     updater = training.StandardUpdater(train_iter, optimizer, device=-1)
 
     # build trainer
@@ -49,12 +44,11 @@ def sample_train(model_type="CNN-rand") -> None:
          'main/accuracy', 'validation/main/accuracy']))
     chainer.config.train = True
     trainer.run()
-    
     return model.predictor
 
 
 def skipgram_embedding(data, dim = 50, batchsize = 32, window = 10,
-                       negative_sample = 5, epochs = 10) -> "numpy.ndarray":
+                       negative_sample = 5, epochs = 10) -> list:
 
     cs = [data.counts[w] for w in range(len(data.counts))]
     loss_func = L.NegativeSampling(dim, cs, negative_sample)
@@ -74,17 +68,13 @@ def skipgram_embedding(data, dim = 50, batchsize = 32, window = 10,
 
     # Set up a trainer
     trainer = training.Trainer(updater, (epochs, 'epoch'), out="result")
-
     trainer.extend(extensions.Evaluator(val_iter, model, converter=convert, device=-1))
     trainer.extend(extensions.LogReport())
     trainer.extend(extensions.PrintReport(
         ['epoch', 'main/loss', 'validation/main/loss']))
     trainer.extend(extensions.ProgressBar())
-
     chainer.config.train = True
-
     trainer.run()
-    
     return model.predictor.embed.W.data
 
 
