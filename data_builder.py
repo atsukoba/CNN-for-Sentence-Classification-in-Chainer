@@ -9,17 +9,6 @@ from chainer.datasets import TupleDataset
 from gensim.models import Word2Vec
 
 
-def load_imdb_data() -> object:
-    """
-    load sample text data and build vocalbs. datasets, embedding-weights.
-    """
-    pos_pathes = glob("data/pos/*.txt")
-    neg_pathes = glob("data/neg/*.txt")
-    pathes = pos_pathes + neg_pathes
-    labels = [1] * len(pos_pathes) + [0] * len(neg_pathes)
-    return Data("imdb", pathes, labels).load()
-
-
 class Data:
     """
     Class of text data, embedding weights.
@@ -40,10 +29,10 @@ class Data:
         """
         set some parameters.
         """
-        assert len(txt_path_list) != 0, "no path in list"
+        assert len(txt_path_list) != 0, "No path in list"
         self.dataname = dataname
         self.txt_path_list = txt_path_list
-        assert len(labels) != 0, "no data in labels"
+        assert len(labels) != 0, "No data in labels"
         self.labels = np.array(labels)
         self.padding_word = padding_word
         return
@@ -52,12 +41,15 @@ class Data:
         self.get_info()
         return
 
-    def load(self) -> object:
+    def load(self, docs_line_style=False) -> object:
         """
         Main data-loading Function
         """
-        self.load_text()
-        self.padding_words()
+        if docs_line_style:
+            self.load_docs_line()
+        else:
+            self.load_docs_file()
+        self.pad_sentences()
         self.build_data()
         return self
 
@@ -81,10 +73,19 @@ class Data:
         return (TupleDataset(self.x_train, self.y_train),
                 TupleDataset(self.x_test, self.y_test))
 
-    def load_text(self, path_list=None) -> None:
+    def load_docs_file(self, path_list=None) -> None:
         """
         load txt files and build vocab dictionaries and datasets.
 
+        data format example
+        -------------------
+        - doc1.txt
+            doc1 strings...
+        - doc2.txt
+            doc2 strings...
+
+        variables
+        ---------
         vocabulary (word2index, index2word) : dict
         - mapping from word to index (order of appearance in sentences).
         - ex. {'<PAD/>': 0, 'Hello': 1, 'World': 2}
@@ -100,7 +101,7 @@ class Data:
         sentences = []
         for file in tqdm(path_list, desc="Read Files.."):
             sentence = []
-            with open(file) as f:
+            with open(file, encoding="utf-8") as f:
                 for line in f:
                     line = self.clean_str(line)
                     for word in line.split():
@@ -118,7 +119,59 @@ class Data:
         self.n_vocab = len(word2index)
         return
 
-    def padding_words(self) -> None:
+    def load_docs_line(self, path_list=None) -> None:
+        """
+        load txt files and build vocab dictionaries and datasets.
+        set different labels along with files.
+        data format
+        -----------
+        - data.txt
+            doc1 \n
+            doc2 \n
+            : \n
+            : \n
+            docN
+
+        variables
+        ---------
+        vocabulary (word2index, index2word) : dict
+        - mapping from word to index
+        - ex. {'<PAD/>': 0, 'Hello': 1, 'World': 2}
+        """
+        if path_list is None:
+            path_list = self.txt_path_list
+
+        index2word = dict()
+        word2index = dict()
+        word2index[self.padding_word] = 0
+        index2word[0] = self.padding_word
+        counts = collections.Counter()
+        sentences = list()
+        labels = list()
+        for label, file in tqdm(enumerate(path_list),
+                                desc="Read lines.."):
+            with open(file, encoding="utf-8") as f:
+                for line in f:
+                    sentence = []
+                    line = self.clean_str(line)
+                    for word in line.split():
+                        if word not in word2index:
+                            ind = len(word2index)
+                            word2index[word] = ind
+                            index2word[ind] = word
+                        counts[word2index[word]] += 1
+                        sentence.append(word)
+                    sentences.append(sentence)
+                    labels.append(label)
+        self.index2word = index2word
+        self.word2index = word2index
+        self.sentences = np.array(sentences)
+        self.labels = np.array(labels)
+        self.counts = counts
+        self.n_vocab = len(word2index)
+        return
+    
+    def pad_sentences(self) -> None:
         """
         Pads all sentences to the same length. The length is defined by
         the longest sentence. Returns padded sentences, in order to align
@@ -146,6 +199,7 @@ class Data:
             num_padding = sequence_length - len(sentence)
             new_sentence = sentence + [self.padding_word] * num_padding
             padded_sentences.append(new_sentence)
+        self.raw_sentences = self.sentences
         self.sentences = np.array(padded_sentences)
         return
 
@@ -175,12 +229,15 @@ class Data:
         
         data x dim : (n_sample, n_channel, words)
         """
-        d = [[self.word2index[w] for w in s] for s in self.sentences]
+        # shuffle data
+        np.random.seed(seed)
+        shuffle_indices = np.random.permutation(np.arange(len(self.labels)))
+        self.labels = self.labels[shuffle_indices]
+        # make index dataset 
+        d = np.array([[int(self.word2index[w]) for w in s]
+                      for s in self.sentences])[shuffle_indices]
+        # split data
         split = int(len(d) * ratio)
-        np.random.seed(seed)
-        np.random.shuffle(d)
-        np.random.seed(seed)
-        np.random.shuffle(self.labels)
         self.x_train, self.x_test = (np.array(d[:split])[:, np.newaxis, :],
                                      np.array(d[split:])[:, np.newaxis, :])
         self.y_train, self.y_test = (np.array(self.labels[:split]),
@@ -189,7 +246,7 @@ class Data:
         return
     
     def embed(self, num_workers=2, vectorize_dim=50,
-              downsampling=1e-3, context=10, min_word_count=1) -> "numpy.ndarray":
+              downsampling=1e-3, context=10, min_word_count=1) -> None:
         """
         Embedding by gensim.Word2Vec skip-gram model and extract weight vector.
 
@@ -202,18 +259,44 @@ class Data:
         min_word_count: int
         """
         print("Training Word2vec model...")
-        s = [[self.word2index[w] for w in s] for s in self.sentences]
-        self.embed_model = Word2Vec(s, workers=num_workers,
+        self.embed_model = Word2Vec(self.raw_sentences,
+                                    workers=num_workers,
                                     size=vectorize_dim,
                                     min_count=min_word_count,
                                     window=context, sample=downsampling)
         self.embed_model.init_sims(replace=True)
-        self.embed_weights = {key: self.embed_model[word] if word in self.embed_model
-            else np.random.uniform(-0.25, 0.25, self.embed_model.vector_size)
-            for key, word in self.word2index.items()}
-                                                                                
+        self.embed_weights = np.array([self.embed_model[word]\
+            if word in self.embed_model else np.random.uniform(-0.25, 0.25,
+            self.embed_model.vector_size)
+            for key, word in self.word2index.items()])
+                                                                 
         print("got embedding weights!")
-        return self.embed_weights
+        return
+
+
+def load_imdb_data(pos_dir="data/pos/", neg_dir="data/neg/",
+                   file_extend="txt") -> object:
+    """
+    load sample text data and build vocalbs. datasets, embedding-weights.
+    """
+    pos_pathes = glob(pos_dir + "*" + file_extend)
+    neg_pathes = glob(pos_dir + "*" + file_extend)
+    pathes = pos_pathes + neg_pathes
+    labels = [1] * len(pos_pathes) + [0] * len(neg_pathes)
+    return Data("imdb", pathes, labels).load()
+
+
+def load_pos_neg_file(data_dir="data/", file_extends=["pos", "neg"]) -> object:
+    """
+    load sample text data and build vocalbs. datasets, embedding-weights.
+    .pos/.neg style text file as data.
+    """
+    pathes = []
+    for ext in file_extends:
+        l = glob(data_dir + "/*" + ext)
+        pathes.extend(l)
+    labels = ["dummy", "dummy"]
+    return Data("imdb", pathes, labels).load(docs_line_style=True)
 
 
 if __name__ == "__main__":
