@@ -46,10 +46,34 @@ tar -xf imdb.tar.gz
 
 ## Sample Classification Demo
 
-```python
-import cnn_sentence
+data loading
 
-clf = cnn_sentence.sample_train("CNN_rand")
+```python
+import data_builder
+
+data = data_builder.load_imdb_data()
+
+data.get_info()
+```
+
+```
+Data Info imdb
+------------------------------
+Vocab: 18744
+Sentences: 10662
+------------------------------
+x_train: (5331, 1, 53)
+x_test: (5331, 1, 53)
+y_train: (5331,)
+y_test: (5331,)
+```
+
+and train.
+
+```python
+import cnnsc
+
+clf = cnnsc.sample_train(data, model_type="CNN_rand")
 ```
 
 results...  
@@ -63,16 +87,29 @@ epoch       elapsed_time  main/loss   validation/main/loss  main/accuracy  valid
 5           638.055       0.427749    0.695113              0.917969       0.516992             
 ```
 
+other models need word2vec embedding. exec `embed()` before start training.
+
+
+```python
+data.embed()
+
+clf = cnnsc.sample_train(data, model_type="CNN_static")
+# or
+clf = cnnsc.sample_train(data, model_type="CNN_non_static")
+# or
+clf = cnnsc.sample_train(data, model_type="CNN_multi_ch")
+```
+
 
 ## [WIP] Usage
 
 when use other data
 
 ```python
-import cnn_sentence, data_builder
+import cnnsc, data_builder
 
 data = data_builder.Data("DATANAME", "LIST-OF-FILEPATH", "LABELS").load()
 dataset = data.get_chainer_dataset()
 
-clf = cnn_sentence.train(dataset=dataset)
+clf = cnnsc.train(dataset=dataset)
 ```
