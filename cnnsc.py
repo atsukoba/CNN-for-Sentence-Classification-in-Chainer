@@ -20,6 +20,7 @@ import data_builder
 sentence classification by CNN on Chainer v.5
 """
 
+
 def sample_train(data, model_type="CNN-rand") -> object:
 
     print(data.get_info())
