@@ -26,12 +26,11 @@ def sample_train(data, model_type="CNN-rand") -> object:
     print(data.get_info())
     # build cnn model
     model = L.Classifier(models.cnn[model_type](
-        embed_weights=data.embed_weights,
-        conv_filter_windows=[3, 8], n_vocab=data.n_vocab))
+        embed_weights=data.embed_weights, n_vocab=data.n_vocab))
 
     train, test = data.get_chainer_dataset()
-    train_iter = iterators.SerialIterator(train, 64)
-    test_iter = iterators.SerialIterator(test, 64, repeat=False, shuffle=False)
+    train_iter = iterators.SerialIterator(train, 50)
+    test_iter = iterators.SerialIterator(test, 50, repeat=False, shuffle=False)
     optimizer = O.Adam().setup(model)
     updater = training.StandardUpdater(train_iter, optimizer, device=-1)
 
