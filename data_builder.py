@@ -75,7 +75,7 @@ class Data:
         Main data-loading Function
         """
         self.load_text()
-        self.padding_words()
+        self.pad_sentences()
         self.build_data()
         return self
 
@@ -136,7 +136,7 @@ class Data:
         self.n_vocab = len(word2index)
         return
 
-    def padding_words(self) -> None:
+    def pad_sentences(self) -> None:
         """
         Pads all sentences to the same length. The length is defined by
         the longest sentence. Returns padded sentences, in order to align
@@ -164,6 +164,7 @@ class Data:
             num_padding = sequence_length - len(sentence)
             new_sentence = sentence + [self.padding_word] * num_padding
             padded_sentences.append(new_sentence)
+        self.raw_sentences = self.sentences
         self.sentences = np.array(padded_sentences)
         return
 
@@ -206,24 +207,33 @@ class Data:
 
         return
     
-    def embed(self) -> "numpy.ndarray":
+    def embed(self) -> None:
         """
         Embedding by gensim.Word2Vec skip-gram model and extract weight vector.
         """
         print("Training Word2vec model...")
-        s = [[self.word2index[w] for w in s] for s in self.sentences]
-        self.embed_model = Word2Vec(s, workers=self.w2v_num_workers,
+        self.embed_model = Word2Vec(self.raw_sentences,
+                                    workers=self.w2v_num_workers,
                                     size=self.w2v_vectorize_dim,
                                     min_count=self.w2v_min_word_count,
                                     window=self.w2v_context,
                                     sample=self.w2v_downsampling)
         self.embed_model.init_sims(replace=True)
-        self.embed_weights = {key: self.embed_model[word] if word in self.embed_model
-            else np.random.uniform(-0.25, 0.25, self.embed_model.vector_size)
-            for key, word in self.word2index.items()}
-                                                                                
-        print("got embedding weights!")
-        return self.embed_weights        
+        # make weights array
+        weights = []
+        for _, word in tqdm(self.word2index.items(),
+                            desc="Getting Weights"):
+            if word in self.embed_model:
+                weights.append(self.embed_model[word])
+            elif word == self.padding_word:
+                weights.append(np.zeros(self.w2v_vectorize_dim))
+            else:
+                weights.append(np.random.uniform(-0.25, 0.25,
+                                                 self.w2v_vectorize_dim))
+        self.embed_weights = np.array(weights)
+
+        print("Got embedding weights!")
+        return
 
 
 if __name__ == "__main__":
