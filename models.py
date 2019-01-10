@@ -21,9 +21,9 @@ class CNN_rand(Chain):
     """
     Chain of CNN for Sentence classification model.
     """
-    def __init__(self, conv_filter_windows=[3, 4, 5],
-                 n_vocab: int, embed_weights=None,
-                 embed_dim=50, n_filters=100,
+    def __init__(self, n_vocab: int, embed_weights=None,
+                 conv_filter_windows=[3, 4, 5],
+                 embed_dim=300, n_filters=100,
                  hidden_dim=50, n_labels=2):
         self.embed_dim = embed_dim
         w = np.random.rand(n_vocab, embed_dim)
@@ -46,7 +46,7 @@ class CNN_rand(Chain):
         conved = []
         for conv in self.convs:
             h = F.relu(conv(x))
-            h = F.average_pooling_2d(h, (2, self.embed_dim))
+            h = F.max_pooling_2d(h, (2, self.embed_dim))
             conved.append(h)
         # concatenate along conved dimention (axis=2)
         x = F.concat(conved, axis=2)
@@ -60,10 +60,10 @@ class CNN_static(Chain):
     """
     Chain of CNN for Sentence classification model.
     """
-    def __init__(self, conv_filter_windows=[3, 4, 5],
-                 embed_weights: list, n_vocab: int,
-                 embed_dim=50, hidden_dim=50,
-                 n_labels=2):
+    def __init__(self, embed_weights: list, n_vocab: int,
+                 conv_filter_windows=[3, 4, 5],
+                 embed_dim=300, n_filters=100,
+                 hidden_dim=50, n_labels=2):
         self.embed_weights = embed_weights
         self.embed_dim = embed_dim
         super(CNN_static, self).__init__()
@@ -82,7 +82,7 @@ class CNN_static(Chain):
         conved = []
         for conv in self.convs:
             h = F.relu(conv(x))
-            h = F.average_pooling_2d(h, (2, self.embed_dim))
+            h = F.max_pooling_2d(h, (2, self.embed_dim))
             conved.append(h)
         # concatenate along conved dimention (axis=2)
         x = F.concat(conved, axis=2)
@@ -96,10 +96,10 @@ class CNN_non_static(Chain):
     """
     Chain of CNN for Sentence classification model.
     """
-    def __init__(self, conv_filter_windows=[3, 4, 5],
-                 embed_weights: list, n_vocab: int,
-                 embed_dim=50, hidden_dim=50,
-                 n_labels=2):
+    def __init__(self, embed_weights: list, n_vocab: int,
+                 conv_filter_windows=[3, 4, 5],
+                 embed_dim=300, n_filters=100,
+                 hidden_dim=50, n_labels=2):
         self.embed_dim = embed_dim
         super(CNN_non_static, self).__init__()
         with self.init_scope():
@@ -121,7 +121,7 @@ class CNN_non_static(Chain):
         conved = []
         for conv in self.convs:
             h = F.relu(conv(x))
-            h = F.average_pooling_2d(h, (2, self.embed_dim))
+            h = F.max_pooling_2d(h, (2, self.embed_dim))
             conved.append(h)
         # concatenate along conved dimention (axis=2)
         x = F.concat(conved, axis=2)
@@ -135,10 +135,10 @@ class CNN_multi_ch(Chain):
     """
     Chain of CNN for Sentence classification model.
     """
-    def __init__(self, conv_filter_windows=[3, 4, 5],
-                 embed_weights: list, n_vocab: int,
-                 embed_dim=50, hidden_dim=50,
-                 n_labels=2):
+    def __init__(self, embed_weights: list, n_vocab: int,
+                 conv_filter_windows=[3, 4, 5],
+                 embed_dim=300, n_filters=100,
+                 hidden_dim=50, n_labels=2):
         self.embed_dim = embed_dim
         super(CNN_multi_ch, self).__init__()
         with self.init_scope():
@@ -162,7 +162,7 @@ class CNN_multi_ch(Chain):
         conved = []
         for conv in self.convs:
             h = F.relu(conv(x))
-            h = F.average_pooling_2d(h, (2, self.embed_dim))
+            h = F.max_pooling_2d(h, (2, self.embed_dim))
             conved.append(h)
         # concatenate along conved dimention (axis=2)
         x = F.concat(conved, axis=2)
