@@ -7,13 +7,13 @@ import chainer.links as L
 import chainer.initializers as I
 
 """
-(on the paper)
-3.1 Hyperparameters and Training
-For all datasets we use: rectified linear units, filter
-windows (h) of 3, 4, 5 with 100 feature maps each,
-dropout rate (p) of 0.5, l2 constraint (s) of 3, and
-mini-batch size of 50. These values were chosen
-via a grid search on the SST-2 dev set.
+>> (on the paper)
+>> 3.1 Hyperparameters and Training
+>> For all datasets we use: rectified linear units, filter
+>> windows (h) of 3, 4, 5 with 100 feature maps each,
+>> dropout rate (p) of 0.5, l2 constraint (s) of 3, and
+>> mini-batch size of 50. These values were chosen
+>> via a grid search on the SST-2 dev set.
 """
 
 
@@ -21,10 +21,10 @@ class CNN_rand(Chain):
     """
     Chain of CNN for Sentence classification model.
     """
-    def __init__(self, conv_filter_windows: list,
+    def __init__(self, conv_filter_windows=[3, 4, 5],
                  n_vocab: int, embed_weights=None,
-                 embed_dim=50, hidden_dim=50,
-                 n_labels=2):
+                 embed_dim=50, n_filters=100,
+                 hidden_dim=50, n_labels=2):
         self.embed_dim = embed_dim
         w = np.random.rand(n_vocab, embed_dim)
         super(CNN_rand, self).__init__()
@@ -36,8 +36,7 @@ class CNN_rand(Chain):
             self.convs = list()
             for window in conv_filter_windows:
                 self.convs.append(
-                    L.Convolution2D(1, 1, ksize=(window,
-                                                 embed_dim)))
+                    L.Convolution2D(1, n_filters, ksize=(window, embed_dim)))
             # full connection
             self.fc4 = L.Linear(None, hidden_dim)
             self.fc5 = L.Linear(hidden_dim, n_labels)
@@ -47,11 +46,11 @@ class CNN_rand(Chain):
         conved = []
         for conv in self.convs:
             h = F.relu(conv(x))
-            h = F.max_pooling_2d(h, (2, self.embed_dim))
+            h = F.average_pooling_2d(h, (2, self.embed_dim))
             conved.append(h)
         # concatenate along conved dimention (axis=2)
         x = F.concat(conved, axis=2)
-        x = F.relu(self.fc4(x))
+        x = F.dropout(F.relu(self.fc4(x)), 0.5)
         if chainer.config.train:
             return self.fc5(x)
         return F.softmax(self.fc5(x))
@@ -61,7 +60,7 @@ class CNN_static(Chain):
     """
     Chain of CNN for Sentence classification model.
     """
-    def __init__(self, conv_filter_windows: list,
+    def __init__(self, conv_filter_windows=[3, 4, 5],
                  embed_weights: list, n_vocab: int,
                  embed_dim=50, hidden_dim=50,
                  n_labels=2):
@@ -73,8 +72,7 @@ class CNN_static(Chain):
             self.convs = list()
             for window in conv_filter_windows:
                 self.convs.append(
-                    L.Convolution2D(1, 1, ksize=(window,
-                                                 embed_dim)))
+                    L.Convolution2D(1, n_filters, ksize=(window, embed_dim)))
             # full connection
             self.fc4 = L.Linear(None, hidden_dim)
             self.fc5 = L.Linear(hidden_dim, n_labels)
@@ -84,11 +82,11 @@ class CNN_static(Chain):
         conved = []
         for conv in self.convs:
             h = F.relu(conv(x))
-            h = F.max_pooling_2d(h, (2, self.embed_dim))
+            h = F.average_pooling_2d(h, (2, self.embed_dim))
             conved.append(h)
         # concatenate along conved dimention (axis=2)
         x = F.concat(conved, axis=2)
-        x = F.relu(self.fc4(x))
+        x = F.dropout(F.relu(self.fc4(x)), 0.5)
         if chainer.config.train:
             return self.fc5(x)
         return F.softmax(self.fc5(x))
@@ -98,7 +96,7 @@ class CNN_non_static(Chain):
     """
     Chain of CNN for Sentence classification model.
     """
-    def __init__(self, conv_filter_windows: list,
+    def __init__(self, conv_filter_windows=[3, 4, 5],
                  embed_weights: list, n_vocab: int,
                  embed_dim=50, hidden_dim=50,
                  n_labels=2):
@@ -113,8 +111,7 @@ class CNN_non_static(Chain):
             self.convs = list()
             for window in conv_filter_windows:
                 self.convs.append(
-                    L.Convolution2D(1, 1, ksize=(window,
-                                                 embed_dim)))
+                    L.Convolution2D(1, n_filters, ksize=(window, embed_dim)))
             # full connection
             self.fc4 = L.Linear(None, hidden_dim)
             self.fc5 = L.Linear(hidden_dim, n_labels)
@@ -124,11 +121,11 @@ class CNN_non_static(Chain):
         conved = []
         for conv in self.convs:
             h = F.relu(conv(x))
-            h = F.max_pooling_2d(h, (2, self.embed_dim))
+            h = F.average_pooling_2d(h, (2, self.embed_dim))
             conved.append(h)
         # concatenate along conved dimention (axis=2)
         x = F.concat(conved, axis=2)
-        x = F.relu(self.fc4(x))
+        x = F.dropout(F.relu(self.fc4(x)), 0.5)
         if chainer.config.train:
             return self.fc5(x)
         return F.softmax(self.fc5(x))
@@ -138,7 +135,7 @@ class CNN_multi_ch(Chain):
     """
     Chain of CNN for Sentence classification model.
     """
-    def __init__(self, conv_filter_windows: list,
+    def __init__(self, conv_filter_windows=[3, 4, 5],
                  embed_weights: list, n_vocab: int,
                  embed_dim=50, hidden_dim=50,
                  n_labels=2):
@@ -152,8 +149,7 @@ class CNN_multi_ch(Chain):
             self.convs = list()
             for window in conv_filter_windows:
                 self.convs.append(
-                    L.Convolution2D(2, 2, ksize=(window,
-                                                 embed_dim)))
+                    L.Convolution2D(1, n_filters, ksize=(window, embed_dim)))
             # full connection
             self.fc4 = L.Linear(None, hidden_dim)
             self.fc5 = L.Linear(hidden_dim, n_labels)
@@ -166,11 +162,11 @@ class CNN_multi_ch(Chain):
         conved = []
         for conv in self.convs:
             h = F.relu(conv(x))
-            h = F.max_pooling_2d(h, (2, self.embed_dim))
+            h = F.average_pooling_2d(h, (2, self.embed_dim))
             conved.append(h)
         # concatenate along conved dimention (axis=2)
         x = F.concat(conved, axis=2)
-        x = F.relu(self.fc4(x))
+        x = F.dropout(F.relu(self.fc4(x)), 0.5)
         if chainer.config.train:
             return self.fc5(x)
         return F.softmax(self.fc5(x))
@@ -267,4 +263,4 @@ cnn = {"CNN_rand": CNN_rand,
 
 
 if __name__ == "__main__":
-    pass
+    print("import this module or exec from cnnsc.py")
