@@ -22,6 +22,14 @@ class SearchParamsOptuna(data, n_trials=100, epoch=20,
     
     and set N of trials.
     >>> optunatrainer(100)
+    
+    Params
+    ------
+    data : ``data_builder.Data`` object. (data loaded & embeded)
+    n_trials : int (default:100)
+    epoch : int (default:20)
+    batchsize : int (default:64)
+    gpu_id : -1=CPU, N=gpu_id
     """
     def __init__(self) -> None:
         self.data = data
@@ -53,8 +61,6 @@ class SearchParamsOptuna(data, n_trials=100, epoch=20,
         return self.df
 
     def objective(self, trial):
-        # hyper params
-        
         # make classifier instance
         model = L.Classifier(self._build_model(trial),
                              lossfun=F.softmax_cross_entropy, accfun=F.accuracy)
@@ -98,18 +104,26 @@ class SearchParamsOptuna(data, n_trials=100, epoch=20,
         return val_err
 
     def _build_model(self, trial):
+        """cnnsc hyper params
+        conv_filter_windows: list, hidden_dim=50
+        """
         model_type = trial.suggest_categorical('model_type',
             ["CNN_rand", "CNN_static", "CNN_non_static", "CNN_multi_ch"])
-        filters = trial.suggest_
+        # Conv filter
+        filter_1 = trial.suggest_int("f1", [2, 4])
+        filter_2 = trial.suggest_int("f2", [5, 8])
+        filter_3 = trial.suggest_int("f3", [9, 12])
+        filters = [filter_1, filter_2, filter_3]
+
         # return chainer.Chain instance
         return models.cnn[model_type](embed_weights=self.data.embed_weights,
-            conv_filter_windows=trial., n_vocab=data.n_vocab)
+            conv_filter_windows=filters, n_vocab=self.data.n_vocab,
+            n_labels=self.data.n_labels, embed_dim=self.data.w2v_vectorize_dim)
 
     def _build_optimizer(self, trial, model):
         # option of optimizer funciton
         optimizer_name = trial.suggest_categorical('optimizer',
                                                    ['Adam', "AdaDelta" ,'RMSProp'])
-
         if optimizer_name == 'Adam':
             adam_alpha = trial.suggest_loguniform('adam_alpha', 1e-5, 1e-1)
             optimizer = optimizers.Adam(alpha=adam_alpha)
