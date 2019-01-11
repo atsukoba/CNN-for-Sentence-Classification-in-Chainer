@@ -17,7 +17,7 @@ import chainer.initializers as I
 """
 
 
-class CNN_rand(Chain):
+class CNNSC(Chain):
     """
     Chain of CNN for Sentence classification model.
     """
@@ -27,7 +27,7 @@ class CNN_rand(Chain):
                  hidden_dim=50, n_labels=2):
         self.embed_dim = embed_dim
         w = np.random.rand(n_vocab, embed_dim)
-        super(CNN_rand, self).__init__()
+        super(CNNSC, self).__init__()
         with self.init_scope():
             # Embedding
             self.embed = L.EmbedID(n_vocab, embed_dim,
@@ -40,7 +40,10 @@ class CNN_rand(Chain):
             # full connection
             self.fc4 = L.Linear(None, hidden_dim)
             self.fc5 = L.Linear(hidden_dim, n_labels)
+            return
 
+
+class CNN_rand(CNNSC):
     def __call__(self, x):
         x = self.embed(x)
         conved = []
@@ -56,27 +59,7 @@ class CNN_rand(Chain):
         return F.softmax(self.fc5(x))
 
 
-class CNN_static(Chain):
-    """
-    Chain of CNN for Sentence classification model.
-    """
-    def __init__(self, embed_weights: list, n_vocab: int,
-                 conv_filter_windows=[3, 4, 5],
-                 embed_dim=300, n_filters=100,
-                 hidden_dim=50, n_labels=2):
-        self.embed_weights = embed_weights
-        self.embed_dim = embed_dim
-        super(CNN_static, self).__init__()
-        with self.init_scope():
-            # Convolutions
-            self.convs = list()
-            for window in conv_filter_windows:
-                self.convs.append(
-                    L.Convolution2D(1, n_filters, ksize=(window, embed_dim)))
-            # full connection
-            self.fc4 = L.Linear(None, hidden_dim)
-            self.fc5 = L.Linear(hidden_dim, n_labels)
-
+class CNN_static(CNNSC):
     def __call__(self, x):
         x = F.embed_id(x, initialW=self.embed_weights)
         conved = []
@@ -92,30 +75,7 @@ class CNN_static(Chain):
         return F.softmax(self.fc5(x))
 
 
-class CNN_non_static(Chain):
-    """
-    Chain of CNN for Sentence classification model.
-    """
-    def __init__(self, embed_weights: list, n_vocab: int,
-                 conv_filter_windows=[3, 4, 5],
-                 embed_dim=300, n_filters=100,
-                 hidden_dim=50, n_labels=2):
-        self.embed_dim = embed_dim
-        super(CNN_non_static, self).__init__()
-        with self.init_scope():
-            # Embedding
-            self.embed = L.EmbedID(n_vocab, embed_dim,
-                                   initialW=embed_weights,
-                                   ignore_label=-1)
-            # Convolutions
-            self.convs = list()
-            for window in conv_filter_windows:
-                self.convs.append(
-                    L.Convolution2D(1, n_filters, ksize=(window, embed_dim)))
-            # full connection
-            self.fc4 = L.Linear(None, hidden_dim)
-            self.fc5 = L.Linear(hidden_dim, n_labels)
-
+class CNN_non_static(CNNSC):
     def __call__(self, x):
         x = self.embed(x)
         conved = []
@@ -131,29 +91,7 @@ class CNN_non_static(Chain):
         return F.softmax(self.fc5(x))
 
 
-class CNN_multi_ch(Chain):
-    """
-    Chain of CNN for Sentence classification model.
-    """
-    def __init__(self, embed_weights: list, n_vocab: int,
-                 conv_filter_windows=[3, 4, 5],
-                 embed_dim=300, n_filters=100,
-                 hidden_dim=50, n_labels=2):
-        self.embed_dim = embed_dim
-        super(CNN_multi_ch, self).__init__()
-        with self.init_scope():
-            # Embedding
-            self.embed = L.EmbedID(n_vocab, embed_dim,
-                                   initialW=embed_weights)
-            # Convolutions
-            self.convs = list()
-            for window in conv_filter_windows:
-                self.convs.append(
-                    L.Convolution2D(1, n_filters, ksize=(window, embed_dim)))
-            # full connection
-            self.fc4 = L.Linear(None, hidden_dim)
-            self.fc5 = L.Linear(hidden_dim, n_labels)
-
+class CNN_multi_ch(CNNSC):
     def __call__(self, x):
         x1 = F.embed_id(x, initialW=self.embed_weights)
         x2 = self.embed(x)
