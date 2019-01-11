@@ -6,8 +6,7 @@ import chainer.functions as F
 import chainer.links as L
 import chainer.initializers as I
 
-"""
->> (on the paper)
+"""(on the paper)
 >> 3.1 Hyperparameters and Training
 >> For all datasets we use: rectified linear units, filter
 >> windows (h) of 3, 4, 5 with 100 feature maps each,
@@ -18,8 +17,7 @@ import chainer.initializers as I
 
 
 class CNNSC(Chain):
-    """
-    Chain of CNN for Sentence classification model.
+    """Chain of CNN for Sentence classification model.
     """
     def __init__(self, n_vocab=None, embed_weights=None,
                  conv_filter_windows=[3, 4, 5],
@@ -32,13 +30,14 @@ class CNNSC(Chain):
             w = np.random.rand(n_vocab, embed_dim)
         else:
             w = embed_weights
-        # set parameters from `loader.Data` object
+        # set parameters from `data_builder.Data` object
         if data is not None:
             n_vocab = data.n_vocab
             embed_weights = data.embed_weights
             n_labels = data.n_labels
         # check
-        assert n_vocab is not None, "set `data` or `n_vocab`"
+        assert n_vocab is not None, \
+            "set `data_builder.Data` object or `n_vocab`"
 
         super(CNNSC, self).__init__()
         with self.init_scope():
@@ -89,24 +88,21 @@ class CNN_static(CNNSC):
         return F.softmax(self.fc5(x))
 
 
-class CNN_non_static(CNNSC):
-    def __call__(self, x):
-        x = self.embed(x)
-        conved = []
-        for conv in self.convs:
-            h = F.relu(conv(x))
-            h = F.max_pooling_2d(h, (2, self.embed_dim))
-            conved.append(h)
-        # concatenate along conved dimention (axis=2)
-        x = F.concat(conved, axis=2)
-        x = F.dropout(F.relu(self.fc4(x)), 0.5)
-        if chainer.config.train:
-            return self.fc5(x)
-        return F.softmax(self.fc5(x))
+class CNN_non_static(CNN_rand):
+    """the difference between `CNN-rand` model and `CNN-non-static`
+    model is if weights of embedding layer are initialized
+    by Word2Vec vectors or not,
+    thus process of forward propagation is totally same.
+    """
+    None
 
 
 class CNN_multi_ch(CNNSC):
     def __call__(self, x):
+        """2 input channels consists of `static` embedding and
+        `non-static` embedding layer, weights (word vectors)
+        of the latter are back-propagated and updated.
+        """ 
         x1 = F.embed_id(x, initialW=self.embed_weights)
         x2 = self.embed(x)
         # concatenate along channel dimention (axis=1)
@@ -144,7 +140,7 @@ class SkipGram(Chain):
         loss = self.loss_func(e, x)
         return loss
 
-
+# When using not Word2Vec for embedding, but Skipgram model with chainer
 class WindowIterator(chainer.dataset.Iterator):
     """Dataset iterator to create a batch of sequences at different positions.
     This iterator returns a pair of the current words and the context words.
