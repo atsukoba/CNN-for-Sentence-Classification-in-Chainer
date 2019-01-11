@@ -21,12 +21,25 @@ class CNNSC(Chain):
     """
     Chain of CNN for Sentence classification model.
     """
-    def __init__(self, n_vocab: int, embed_weights=None,
+    def __init__(self, n_vocab=None, embed_weights=None,
                  conv_filter_windows=[3, 4, 5],
                  embed_dim=300, n_filters=100,
-                 hidden_dim=50, n_labels=2):
+                 hidden_dim=50, n_labels=2,
+                 data=None):
         self.embed_dim = embed_dim
-        w = np.random.rand(n_vocab, embed_dim)
+        # CNN-rand or other models.
+        if embed_weights is None:
+            w = np.random.rand(n_vocab, embed_dim)
+        else:
+            w = embed_weights
+        # set parameters from `loader.Data` object
+        if data is not None:
+            n_vocab = data.n_vocab
+            embed_weights = data.embed_weights
+            n_labels = data.n_labels
+        # check
+        assert n_vocab is not None, "set `data` or `n_vocab`"
+
         super(CNNSC, self).__init__()
         with self.init_scope():
             # Embedding
@@ -36,7 +49,8 @@ class CNNSC(Chain):
             self.convs = list()
             for window in conv_filter_windows:
                 self.convs.append(
-                    L.Convolution2D(1, n_filters, ksize=(window, embed_dim)))
+                    L.Convolution2D(1, n_filters,
+                                    ksize=(window, embed_dim)))
             # full connection
             self.fc4 = L.Linear(None, hidden_dim)
             self.fc5 = L.Linear(hidden_dim, n_labels)
