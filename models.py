@@ -19,22 +19,25 @@ import chainer.initializers as I
 class CNNSC(Chain):
     """Chain of CNN for Sentence classification model.
     """
-    def __init__(self, n_vocab=None, embed_weights=None,
+    def __init__(self, data=None, 
+                 n_vocab=None, embed_weights=None,
                  conv_filter_windows=[3, 4, 5],
                  embed_dim=300, n_filters=100,
                  hidden_dim=50, n_labels=2,
-                 data=None):
+                 dropout=0.3):
         self.embed_dim = embed_dim
+        self.dropout = dropout
         # CNN-rand or other models.
-        if embed_weights is None:
-            w = np.random.rand(n_vocab, embed_dim)
+        if embed_weights is None and n_vocab is not None:
+            self.embed_weights = np.random.rand(n_vocab, embed_dim)
         else:
-            w = embed_weights
+            self.embed_weights = embed_weights
         # set parameters from `data_builder.Data` object
         if data is not None:
             n_vocab = data.n_vocab
-            embed_weights = data.embed_weights
+            self.embed_weights = data.embed_weights
             n_labels = data.n_labels
+            embed_dim = data.w2v_vectorize_dim
         # check
         assert n_vocab is not None, \
             "set `data_builder.Data` object or `n_vocab`"
@@ -43,7 +46,7 @@ class CNNSC(Chain):
         with self.init_scope():
             # Embedding
             self.embed = L.EmbedID(n_vocab, embed_dim,
-                                   initialW=w)
+                                   initialW=self.embed_weights)
             # Convolutions
             self.convs = list()
             for window in conv_filter_windows:
@@ -66,7 +69,7 @@ class CNN_rand(CNNSC):
             conved.append(h)
         # concatenate along conved dimention (axis=2)
         x = F.concat(conved, axis=2)
-        x = F.dropout(F.relu(self.fc4(x)), 0.5)
+        x = F.dropout(F.relu(self.fc4(x)), self.dropout)
         if chainer.config.train:
             return self.fc5(x)
         return F.softmax(self.fc5(x))
@@ -74,7 +77,7 @@ class CNN_rand(CNNSC):
 
 class CNN_static(CNNSC):
     def __call__(self, x):
-        x = F.embed_id(x, initialW=self.embed_weights)
+        x = F.embed_id(x, self.embed_weights)
         conved = []
         for conv in self.convs:
             h = F.relu(conv(x))
@@ -82,7 +85,7 @@ class CNN_static(CNNSC):
             conved.append(h)
         # concatenate along conved dimention (axis=2)
         x = F.concat(conved, axis=2)
-        x = F.dropout(F.relu(self.fc4(x)), 0.5)
+        x = F.dropout(F.relu(self.fc4(x)), self.dropout)
         if chainer.config.train:
             return self.fc5(x)
         return F.softmax(self.fc5(x))
@@ -103,7 +106,7 @@ class CNN_multi_ch(CNNSC):
         `non-static` embedding layer, weights (word vectors)
         of the latter are back-propagated and updated.
         """ 
-        x1 = F.embed_id(x, initialW=self.embed_weights)
+        x1 = F.embed_id(x, self.embed_weights)
         x2 = self.embed(x)
         # concatenate along channel dimention (axis=1)
         x = F.concat([x1, x2], axis=1)
@@ -114,7 +117,7 @@ class CNN_multi_ch(CNNSC):
             conved.append(h)
         # concatenate along conved dimention (axis=2)
         x = F.concat(conved, axis=2)
-        x = F.dropout(F.relu(self.fc4(x)), 0.5)
+        x = F.dropout(F.relu(self.fc4(x)), self.dropout)
         if chainer.config.train:
             return self.fc5(x)
         return F.softmax(self.fc5(x))
