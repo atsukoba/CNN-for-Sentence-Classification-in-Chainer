@@ -42,7 +42,7 @@ class CNNSC(Chain):
         assert n_vocab is not None, \
             "set `data_builder.Data` object or `n_vocab`"
 
-        super(CNNSC, self).__init__()
+        super(self.__class__.__name__, self).__init__()
         with self.init_scope():
             # Embedding
             self.embed = L.EmbedID(n_vocab, embed_dim,
