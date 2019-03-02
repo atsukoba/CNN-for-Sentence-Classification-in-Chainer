@@ -28,8 +28,7 @@ def sample_train(data, model_type="CNN-rand") -> object:
 
     print(data.get_info())
     # build cnn model
-    model = L.Classifier(models.cnn[model_type](
-        embed_weights=data.embed_weights, n_vocab=data.n_vocab))
+    model = L.Classifier(models.cnn[model_type](data))
 
     train, test = data.get_chainer_dataset()
     train_iter = iterators.SerialIterator(train, 50)

@@ -19,30 +19,33 @@ import chainer.initializers as I
 class CNNSC(Chain):
     """Chain of CNN for Sentence classification model.
     """
-    def __init__(self, data=None, 
+    def __init__(self, data, 
                  n_vocab=None, embed_weights=None,
                  conv_filter_windows=[3, 4, 5],
                  embed_dim=300, n_filters=100,
                  hidden_dim=50, n_labels=2,
                  dropout=0.3):
+
         self.embed_dim = embed_dim
         self.dropout = dropout
+
         # CNN-rand or other models.
         if embed_weights is None and n_vocab is not None:
             self.embed_weights = np.random.rand(n_vocab, embed_dim)
         else:
             self.embed_weights = embed_weights
-        # set parameters from `data_builder.Data` object
-        if data is not None:
-            n_vocab = data.n_vocab
-            self.embed_weights = data.embed_weights
-            n_labels = data.n_labels
-            embed_dim = data.w2v_vectorize_dim
-        # check
-        assert n_vocab is not None, \
-            "set `data_builder.Data` object or `n_vocab`"
 
-        super(self.__class__.__name__, self).__init__()
+        # set parameters from `data_builder.Data` object
+        n_vocab = data.n_vocab
+        if hasattr(data, "embed_weights"):
+            self.embed_weights = data.embed_weights
+        n_labels = data.n_labels
+        embed_dim = data.w2v_vectorize_dim
+
+        # check
+        assert n_vocab is not None, "set an arg `data_builder.Data`"
+
+        super(type(self), self).__init__()
         with self.init_scope():
             # Embedding
             self.embed = L.EmbedID(n_vocab, embed_dim,
@@ -59,7 +62,50 @@ class CNNSC(Chain):
             return
 
 
-class CNN_rand(CNNSC):
+class CNN_rand(Chain):
+    
+    def __init__(self, data, 
+                 n_vocab=None, embed_weights=None,
+                 conv_filter_windows=[3, 4, 5],
+                 embed_dim=300, n_filters=100,
+                 hidden_dim=50, n_labels=2,
+                 dropout=0.3):
+
+        self.embed_dim = embed_dim
+        self.dropout = dropout
+
+        # CNN-rand or other models.
+        if embed_weights is None and n_vocab is not None:
+            self.embed_weights = np.random.rand(n_vocab, embed_dim)
+        else:
+            self.embed_weights = embed_weights
+
+        # set parameters from `data_builder.Data` object
+        n_vocab = data.n_vocab
+        if hasattr(data, "embed_weights"):
+            self.embed_weights = data.embed_weights
+        n_labels = data.n_labels
+        embed_dim = data.w2v_vectorize_dim
+
+        # check
+        assert n_vocab is not None, "set an arg `data_builder.Data`"
+
+        super(type(self), self).__init__()
+        with self.init_scope():
+            # Embedding
+            self.embed = L.EmbedID(n_vocab, embed_dim,
+                                   initialW=self.embed_weights)
+            # Convolutions
+            self.convs = list()
+            for window in conv_filter_windows:
+                self.convs.append(
+                    L.Convolution2D(1, n_filters,
+                                    ksize=(window, embed_dim)))
+            # full connection
+            self.fc4 = L.Linear(None, hidden_dim)
+            self.fc5 = L.Linear(hidden_dim, n_labels)
+            return
+
     def __call__(self, x):
         x = self.embed(x)
         conved = []
@@ -75,7 +121,50 @@ class CNN_rand(CNNSC):
         return F.softmax(self.fc5(x))
 
 
-class CNN_static(CNNSC):
+class CNN_static(Chain):
+    
+    def __init__(self, data, 
+                 n_vocab=None, embed_weights=None,
+                 conv_filter_windows=[3, 4, 5],
+                 embed_dim=300, n_filters=100,
+                 hidden_dim=50, n_labels=2,
+                 dropout=0.3):
+
+        self.embed_dim = embed_dim
+        self.dropout = dropout
+
+        # CNN-rand or other models.
+        if embed_weights is None and n_vocab is not None:
+            self.embed_weights = np.random.rand(n_vocab, embed_dim)
+        else:
+            self.embed_weights = embed_weights
+
+        # set parameters from `data_builder.Data` object
+        n_vocab = data.n_vocab
+        if hasattr(data, "embed_weights"):
+            self.embed_weights = data.embed_weights
+        n_labels = data.n_labels
+        embed_dim = data.w2v_vectorize_dim
+
+        # check
+        assert n_vocab is not None, "set an arg `data_builder.Data`"
+
+        super(type(self), self).__init__()
+        with self.init_scope():
+            # Embedding
+            self.embed = L.EmbedID(n_vocab, embed_dim,
+                                   initialW=self.embed_weights)
+            # Convolutions
+            self.convs = list()
+            for window in conv_filter_windows:
+                self.convs.append(
+                    L.Convolution2D(1, n_filters,
+                                    ksize=(window, embed_dim)))
+            # full connection
+            self.fc4 = L.Linear(None, hidden_dim)
+            self.fc5 = L.Linear(hidden_dim, n_labels)
+            return
+
     def __call__(self, x):
         x = F.embed_id(x, self.embed_weights)
         conved = []
@@ -91,16 +180,112 @@ class CNN_static(CNNSC):
         return F.softmax(self.fc5(x))
 
 
-class CNN_non_static(CNN_rand):
+class CNN_non_static(Chain):
     """the difference between `CNN-rand` model and `CNN-non-static`
     model is if weights of embedding layer are initialized
     by Word2Vec vectors or not,
     thus process of forward propagation is totally same.
     """
-    None
+    def __init__(self, data, 
+                 n_vocab=None, embed_weights=None,
+                 conv_filter_windows=[3, 4, 5],
+                 embed_dim=300, n_filters=100,
+                 hidden_dim=50, n_labels=2,
+                 dropout=0.3):
+
+        self.embed_dim = embed_dim
+        self.dropout = dropout
+
+        # CNN-rand or other models.
+        if embed_weights is None and n_vocab is not None:
+            self.embed_weights = np.random.rand(n_vocab, embed_dim)
+        else:
+            self.embed_weights = embed_weights
+
+        # set parameters from `data_builder.Data` object
+        n_vocab = data.n_vocab
+        if hasattr(data, "embed_weights"):
+            self.embed_weights = data.embed_weights
+        n_labels = data.n_labels
+        embed_dim = data.w2v_vectorize_dim
+
+        # check
+        assert n_vocab is not None, "set an arg `data_builder.Data`"
+
+        super(type(self), self).__init__()
+        with self.init_scope():
+            # Embedding
+            self.embed = L.EmbedID(n_vocab, embed_dim,
+                                   initialW=self.embed_weights)
+            # Convolutions
+            self.convs = list()
+            for window in conv_filter_windows:
+                self.convs.append(
+                    L.Convolution2D(1, n_filters,
+                                    ksize=(window, embed_dim)))
+            # full connection
+            self.fc4 = L.Linear(None, hidden_dim)
+            self.fc5 = L.Linear(hidden_dim, n_labels)
+            return
+    def __call__(self, x):
+        x = self.embed(x)
+        conved = []
+        for conv in self.convs:
+            h = F.relu(conv(x))
+            h = F.max_pooling_2d(h, (2, self.embed_dim))
+            conved.append(h)
+        # concatenate along conved dimention (axis=2)
+        x = F.concat(conved, axis=2)
+        x = F.dropout(F.relu(self.fc4(x)), self.dropout)
+        if chainer.config.train:
+            return self.fc5(x)
+        return F.softmax(self.fc5(x))
 
 
-class CNN_multi_ch(CNNSC):
+class CNN_multi_ch(Chain):
+
+    def __init__(self, data, 
+                 n_vocab=None, embed_weights=None,
+                 conv_filter_windows=[3, 4, 5],
+                 embed_dim=300, n_filters=100,
+                 hidden_dim=50, n_labels=2,
+                 dropout=0.3):
+
+        self.embed_dim = embed_dim
+        self.dropout = dropout
+
+        # CNN-rand or other models.
+        if embed_weights is None and n_vocab is not None:
+            self.embed_weights = np.random.rand(n_vocab, embed_dim)
+        else:
+            self.embed_weights = embed_weights
+
+        # set parameters from `data_builder.Data` object
+        n_vocab = data.n_vocab
+        if hasattr(data, "embed_weights"):
+            self.embed_weights = data.embed_weights
+        n_labels = data.n_labels
+        embed_dim = data.w2v_vectorize_dim
+
+        # check
+        assert n_vocab is not None, "set an arg `data_builder.Data`"
+
+        super(type(self), self).__init__()
+        with self.init_scope():
+            # Embedding
+            self.embed = L.EmbedID(n_vocab, embed_dim,
+                                   initialW=self.embed_weights)
+            # Convolutions
+            self.convs = list()
+            for window in conv_filter_windows:
+                self.convs.append(
+                    L.Convolution2D(1, n_filters,
+                                    ksize=(window, embed_dim)))
+            # full connection
+            self.fc4 = L.Linear(None, hidden_dim)
+            self.fc5 = L.Linear(hidden_dim, n_labels)
+            return
+
     def __call__(self, x):
         """2 input channels consists of `static` embedding and
         `non-static` embedding layer, weights (word vectors)
